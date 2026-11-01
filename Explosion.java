@@ -12,11 +12,33 @@ public class Explosion {
 
     private final double x;
     private final double y;
+    private final double durationSeconds;
+    private final double secondRingDelaySeconds;
+    private final double firstRingMaxRadius;
+    private final double secondRingMaxRadius;
     private double age;
 
     public Explosion(double x, double y) {
+        this(x, y, FIRST_RING_MAX_RADIUS, SECOND_RING_MAX_RADIUS, DURATION_SECONDS);
+    }
+
+    public Explosion(double x, double y, double maxRadius, double durationSeconds) {
+        this(x, y, maxRadius * 0.6, maxRadius, durationSeconds);
+    }
+
+    private Explosion(double x, double y, double firstRingMaxRadius, double secondRingMaxRadius,
+            double durationSeconds) {
+        if (firstRingMaxRadius <= 0.0 || secondRingMaxRadius < firstRingMaxRadius
+                || durationSeconds <= 0.0 || !Double.isFinite(firstRingMaxRadius)
+                || !Double.isFinite(secondRingMaxRadius) || !Double.isFinite(durationSeconds)) {
+            throw new IllegalArgumentException("Explosion size and duration must be finite and positive");
+        }
         this.x = x;
         this.y = y;
+        this.durationSeconds = durationSeconds;
+        this.secondRingDelaySeconds = Math.min(SECOND_RING_DELAY_SECONDS, durationSeconds * 0.2);
+        this.firstRingMaxRadius = firstRingMaxRadius;
+        this.secondRingMaxRadius = secondRingMaxRadius;
     }
 
     public void update(double deltaSeconds) {
@@ -24,23 +46,23 @@ public class Explosion {
             throw new IllegalArgumentException("deltaSeconds must be finite and non-negative");
         }
 
-        age = Math.min(age + deltaSeconds, DURATION_SECONDS);
+        age = Math.min(age + deltaSeconds, durationSeconds);
     }
 
     public boolean isFinished() {
-        return age >= DURATION_SECONDS;
+        return age >= durationSeconds;
     }
 
     public void draw(Graphics2D g2d) {
         Stroke originalStroke = g2d.getStroke();
-        double firstProgress = Math.min(age / DURATION_SECONDS, 1.0);
-        drawRing(g2d, 2.0 + firstProgress * FIRST_RING_MAX_RADIUS,
+        double firstProgress = Math.min(age / durationSeconds, 1.0);
+        drawRing(g2d, 2.0 + firstProgress * firstRingMaxRadius,
                 (int) (255 * (1.0 - firstProgress)), new Color(255, 190, 45), 3.0f);
 
-        if (age >= SECOND_RING_DELAY_SECONDS) {
-            double secondDuration = DURATION_SECONDS - SECOND_RING_DELAY_SECONDS;
-            double secondProgress = Math.min((age - SECOND_RING_DELAY_SECONDS) / secondDuration, 1.0);
-            drawRing(g2d, 10.0 + secondProgress * (SECOND_RING_MAX_RADIUS - 10.0),
+        if (age >= secondRingDelaySeconds) {
+            double secondDuration = durationSeconds - secondRingDelaySeconds;
+            double secondProgress = Math.min((age - secondRingDelaySeconds) / secondDuration, 1.0);
+            drawRing(g2d, 10.0 + secondProgress * (secondRingMaxRadius - 10.0),
                     (int) (255 * (1.0 - secondProgress)), new Color(255, 90, 25), 2.0f);
         }
         g2d.setStroke(originalStroke);

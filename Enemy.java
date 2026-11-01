@@ -1,3 +1,4 @@
+import java.util.List;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -44,9 +45,12 @@ public abstract class Enemy {
         }
     }
 
-    public void moveToward(Tower tower, double deltaSeconds) {
+    public void moveToward(Tower tower, double deltaSeconds, List<? extends Obstacle> obstacles) {
         if (tower == null) {
             throw new IllegalArgumentException("tower cannot be null");
+        }
+        if (obstacles == null) {
+            throw new IllegalArgumentException("obstacles cannot be null");
         }
         if (deltaSeconds < 0.0 || !Double.isFinite(deltaSeconds)) {
             throw new IllegalArgumentException("deltaSeconds must be finite and non-negative");
@@ -63,8 +67,41 @@ public abstract class Enemy {
         }
 
         double distanceToMove = Math.min(distance, speed * deltaSeconds);
-        x += dx / distance * distanceToMove;
-        y += dy / distance * distanceToMove;
+        int steps = Math.max(1, (int) Math.ceil(distanceToMove / 4.0));
+        double stepX = dx / distance * distanceToMove / steps;
+        double stepY = dy / distance * distanceToMove / steps;
+
+        for (int i = 0; i < steps; i++) {
+            double nextX = x + stepX;
+            if (isPositionClear(nextX, y, obstacles)) {
+                x = nextX;
+            }
+
+            double nextY = y + stepY;
+            if (isPositionClear(x, nextY, obstacles)) {
+                y = nextY;
+            }
+        }
+    }
+
+    private boolean isPositionClear(double centerX, double centerY,
+            List<? extends Obstacle> obstacles) {
+        for (Obstacle obstacle : obstacles) {
+            if (obstacle == null) {
+                continue;
+            }
+
+            double closestX = Math.max(obstacle.getX(),
+                    Math.min(centerX, obstacle.getX() + obstacle.getWidth()));
+            double closestY = Math.max(obstacle.getY(),
+                    Math.min(centerY, obstacle.getY() + obstacle.getHeight()));
+            double dx = centerX - closestX;
+            double dy = centerY - closestY;
+            if (dx * dx + dy * dy < COLLISION_RADIUS * COLLISION_RADIUS) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public void takeDamage(int damage) {

@@ -12,22 +12,36 @@ import java.util.List;
 import java.util.Random;
 
 public class main extends JPanel implements ActionListener, MouseListener, MouseMotionListener {
+    private static final double AIRSTRIKE_PREPARATION_SECONDS = 1.2;
+    private static final double AIRSTRIKE_COOLDOWN_SECONDS = 20.0;
+    private static final double AIRSTRIKE_BLAST_RADIUS = 150.0;
+    private static final double AIRPLANE_SPEED = 420.0;
+
     private Timer timer;
     private BufferedImage bgImage;
     private BufferedImage gunBaseImage;
     private BufferedImage gunImage;
+    private BufferedImage airplaneImage;
     private LevelManager levelManager;
     private Tower tower;
     private List<Bullet> bullets;
     private List<Enemy> enemies;
     private List<Explosion> explosions;
     private Random random;
-    private double mouseX, mouseY;
+    private double mouseX = 400.0;
+    private double mouseY = 300.0;
     private int enemySpawnTimer = 0;
     private int enemiesSpawned = 0;
     private int enemiesDefeated = 0;
     private boolean gameOver = false;
     private boolean gameWon = false;
+    private double airstrikePreparationRemaining;
+    private double airstrikeCooldownRemaining;
+    private double airstrikeTargetX = 400.0;
+    private double airstrikeTargetY = 300.0;
+    private double airplaneY = 650.0;
+    private boolean airplaneFlying;
+    private boolean airstrikeBombDropped;
 
     public main() {
         setPreferredSize(new Dimension(800, 600));
@@ -35,6 +49,7 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
         bgImage = loadImage("assets/background.png");
         gunBaseImage = loadImage("assets/Gunbase.png");
         gunImage = loadImage("assets/Gun.png");
+        airplaneImage = loadImage("assets/airplane.png");
         loadCustomCursor();
         setFocusable(true);
         addMouseListener(this);
@@ -46,6 +61,14 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
             public void actionPerformed(ActionEvent e) {
                 initGame();
                 repaint();
+            }
+        });
+        getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_E, 0), "airstrike");
+        getActionMap().put("airstrike", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                activateAirstrike();
             }
         });
 
@@ -69,14 +92,21 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
         enemySpawnTimer = 0;
         enemiesSpawned = 0;
         enemiesDefeated = 0;
+        airstrikePreparationRemaining = 0.0;
+        airstrikeCooldownRemaining = 0.0;
+        airplaneFlying = false;
+        airplaneY = 650.0;
+        airstrikeBombDropped = false;
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
         double deltaSeconds = 0.016; // เวลาผ่านไปต่อเฟรม (ประมาณ 16ms)
         updateExplosions(deltaSeconds);
+        updateAirstrike(deltaSeconds);
 
         if (gameOver || gameWon) {
+            airstrikePreparationRemaining = 0.0;
             repaint();
             return;
         }
@@ -119,7 +149,8 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
         while (enemyIter.hasNext()) {
             Enemy enemy = enemyIter.next();
             if (enemy.isAlive()) {
-                enemy.moveToward(tower, deltaSeconds);
+                enemy.moveToward(tower, deltaSeconds,
+                        levelManager.getCurrentLevel().getObstacles());
                 
                 // เช็คว่าศัตรูชนป้อมตรงกลางหรือยัง
                 double dx = enemy.getX() - tower.getX();
@@ -189,6 +220,67 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
             explosion.update(deltaSeconds);
             if (explosion.isFinished()) {
                 explosionIter.remove();
+            }
+        }
+    }
+
+    private void activateAirstrike() {
+        if (gameOver || gameWon || airstrikeCooldownRemaining > 0.0
+                || airstrikePreparationRemaining > 0.0 || airplaneFlying) {
+            return;
+        }
+
+        airstrikeTargetX = Math.max(0.0, Math.min(800.0, mouseX));
+        airstrikeTargetY = Math.max(0.0, Math.min(600.0, mouseY));
+        airstrikePreparationRemaining = AIRSTRIKE_PREPARATION_SECONDS;
+        airstrikeCooldownRemaining = AIRSTRIKE_COOLDOWN_SECONDS;
+        airplaneY = getAirplaneHalfHeight() + 600.0;
+        airstrikeBombDropped = false;
+    }
+
+    private void updateAirstrike(double deltaSeconds) {
+        airstrikeCooldownRemaining = Math.max(0.0, airstrikeCooldownRemaining - deltaSeconds);
+        if (airstrikePreparationRemaining > 0.0) {
+            airstrikePreparationRemaining = Math.max(0.0, airstrikePreparationRemaining - deltaSeconds);
+            if (airstrikePreparationRemaining == 0.0) {
+                airplaneFlying = true;
+            }
+        }
+
+        if (!airplaneFlying) {
+            return;
+        }
+
+        double previousY = airplaneY;
+        airplaneY -= AIRPLANE_SPEED * deltaSeconds;
+        if (!airstrikeBombDropped && previousY >= airstrikeTargetY && airplaneY <= airstrikeTargetY) {
+            airstrikeBombDropped = true;
+            detonateAirstrike();
+        }
+
+        if (airplaneY + getAirplaneHalfHeight() < 0.0) {
+            airplaneFlying = false;
+        }
+    }
+
+    private double getAirplaneHalfHeight() {
+        return airplaneImage == null ? 18.0 : airplaneImage.getHeight() / 2.0;
+    }
+
+    private void detonateAirstrike() {
+        explosions.add(new Explosion(airstrikeTargetX, airstrikeTargetY,
+                AIRSTRIKE_BLAST_RADIUS, 0.9));
+
+        Iterator<Enemy> enemyIter = enemies.iterator();
+        while (enemyIter.hasNext()) {
+            Enemy enemy = enemyIter.next();
+            double dx = enemy.getX() - airstrikeTargetX;
+            double dy = enemy.getY() - airstrikeTargetY;
+            double hitRadius = AIRSTRIKE_BLAST_RADIUS + enemy.getCollisionRadius();
+            if (enemy.isAlive() && dx * dx + dy * dy <= hitRadius * hitRadius) {
+                enemy.takeDamage(enemy.getHealth());
+                enemyIter.remove();
+                enemiesDefeated++;
             }
         }
     }
@@ -297,6 +389,28 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
             explosion.draw(g2d);
         }
 
+        if (airstrikePreparationRemaining > 0.0) {
+            g2d.setColor(Color.YELLOW);
+            int warningRadius = (int) AIRSTRIKE_BLAST_RADIUS;
+            int targetX = (int) airstrikeTargetX;
+            int targetY = (int) airstrikeTargetY;
+            g2d.drawOval(targetX - warningRadius, targetY - warningRadius,
+                    warningRadius * 2, warningRadius * 2);
+            g2d.drawLine(targetX - 8, targetY, targetX + 8, targetY);
+            g2d.drawLine(targetX, targetY - 8, targetX, targetY + 8);
+        }
+
+        if (airplaneFlying) {
+            if (airplaneImage != null) {
+                g2d.drawImage(airplaneImage,
+                        (int) airstrikeTargetX - airplaneImage.getWidth() / 2,
+                        (int) airplaneY - airplaneImage.getHeight() / 2, null);
+            } else {
+                g2d.setColor(Color.LIGHT_GRAY);
+                g2d.fillOval((int) airstrikeTargetX - 10, (int) airplaneY - 18, 20, 36);
+            }
+        }
+
         // Display game status.
         g2d.setColor(Color.WHITE);
         g2d.setFont(new Font("Arial", Font.BOLD, 14));
@@ -306,6 +420,12 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
                 + levelManager.getCurrentLevel().getEnemyQuota(), 20, 80);
         g2d.drawString("Enemies alive: " + enemies.size(), 20, 105);
         g2d.drawString("Move Mouse to Aim, Left Click to Shoot, R to Restart.", 20, 570);
+        g2d.drawString(airstrikeCooldownRemaining <= 0.0 ? "Airstrike (E): READY"
+                : String.format("Airstrike (E): %.1fs", airstrikeCooldownRemaining), 20, 130);
+        if (airstrikePreparationRemaining > 0.0) {
+            g2d.setColor(Color.YELLOW);
+            g2d.drawString("AIRSTRIKE INCOMING!", 330, 40);
+        }
 
         // หน้าจอ Game Over / Win
         if (gameOver) {
