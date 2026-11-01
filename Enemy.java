@@ -144,21 +144,21 @@ public abstract class Enemy {
         return COLLISION_RADIUS;
     }
     public static class FastEnemy extends Enemy {
-        private static final BufferedImage IMAGE = loadImage("assets/fast.png");
+        private static final BufferedImage IMAGE = loadImage("assets/Fast.png");
 
         public FastEnemy(double x, double y) {
             super(x, y, 90.0, 1, IMAGE);
         }
     }
     public static class MediumEnemy extends Enemy {
-        private static final BufferedImage IMAGE = loadImage("assets/medium.png");
+        private static final BufferedImage IMAGE = loadImage("assets/Medium.png");
 
         public MediumEnemy(double x, double y) {
             super(x, y, 60.0, 2, IMAGE);
         }
     }
     public static class TankEnemy extends Enemy {
-        private static final BufferedImage IMAGE = loadImage("assets/tank.png");
+        private static final BufferedImage IMAGE = loadImage("assets/Tank.png");
 
         public TankEnemy(double x, double y) {
             super(x, y, 35.0, 6, IMAGE);
