@@ -17,6 +17,7 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
     private Tower tower;
     private List<Bullet> bullets;
     private List<Enemy> enemies;
+    private List<Explosion> explosions;
     private Random random;
     private double mouseX, mouseY;
     private int enemySpawnTimer = 0;
@@ -33,6 +34,7 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
         } catch (IOException e) {
             e.printStackTrace();
         }
+        loadCustomCursor();
         setFocusable(true);
         addMouseListener(this);
         addMouseMotionListener(this);
@@ -59,6 +61,7 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
         tower = new Tower(400, 300, 5);
         bullets = new ArrayList<>();
         enemies = new ArrayList<>();
+        explosions = new ArrayList<>();
         random = new Random();
         gameOver = false;
         gameWon = false;
@@ -69,12 +72,13 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
 
     @Override
     public void actionPerformed(ActionEvent e) {
+        double deltaSeconds = 0.016; // เวลาผ่านไปต่อเฟรม (ประมาณ 16ms)
+        updateExplosions(deltaSeconds);
+
         if (gameOver || gameWon) {
             repaint();
             return;
         }
-
-        double deltaSeconds = 0.016; // เวลาผ่านไปต่อเฟรม (ประมาณ 16ms)
 
         // 1. อัปเดตตำแหน่งกระสุนและการชน
         List<Obstacle> currentObstacles = levelManager.getCurrentLevel().getObstacles();
@@ -84,7 +88,11 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
             b.update(deltaSeconds);
             
             // เช็คชนศัตรูหรือสิ่งกีดขวาง
-            if (b.checkCollisions(enemies, currentObstacles) || !b.isActive()) {
+            boolean collided = b.checkCollisions(enemies, currentObstacles);
+            if (collided) {
+                explosions.add(new Explosion(b.getX(), b.getY()));
+            }
+            if (collided || !b.isActive()) {
                 bulletIter.remove();
             } else {
                 // เช็คออกนอกจอไหม
@@ -173,6 +181,34 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
         enemies.add(new Enemy(x, y, type));
     }
 
+    private void updateExplosions(double deltaSeconds) {
+        Iterator<Explosion> explosionIter = explosions.iterator();
+        while (explosionIter.hasNext()) {
+            Explosion explosion = explosionIter.next();
+            explosion.update(deltaSeconds);
+            if (explosion.isFinished()) {
+                explosionIter.remove();
+            }
+        }
+    }
+
+    private void loadCustomCursor() {
+        try {
+            BufferedImage cursorImage = ImageIO.read(new File("assets/cursor.png"));
+            if (cursorImage == null) {
+                System.err.println("Unable to load custom cursor: assets/cursor.png is not a supported image.");
+                return;
+            }
+
+            Point hotspot = new Point(cursorImage.getWidth() / 2, cursorImage.getHeight() / 2);
+            Cursor cursor = Toolkit.getDefaultToolkit()
+                    .createCustomCursor(cursorImage, hotspot, "Secure da Tower cursor");
+            setCursor(cursor);
+        } catch (IOException | HeadlessException | IndexOutOfBoundsException e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -218,6 +254,10 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
                 g2d.fillOval((int) en.getX() - 10, (int) en.getY() - 10, 20, 20);
                 drawEnemyHealthBar(g2d, en);
             }
+        }
+
+        for (Explosion explosion : explosions) {
+            explosion.draw(g2d);
         }
 
         // Display game status.
