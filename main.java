@@ -2,6 +2,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
+import java.awt.geom.AffineTransform;
 import java.io.File;
 import java.io.IOException;
 import javax.imageio.ImageIO;
@@ -13,6 +14,8 @@ import java.util.Random;
 public class main extends JPanel implements ActionListener, MouseListener, MouseMotionListener {
     private Timer timer;
     private BufferedImage bgImage;
+    private BufferedImage gunBaseImage;
+    private BufferedImage gunImage;
     private LevelManager levelManager;
     private Tower tower;
     private List<Bullet> bullets;
@@ -29,11 +32,9 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
     public main() {
         setPreferredSize(new Dimension(800, 600));
         setBackground(new Color(40, 120, 60)); // สีพื้นหลังสนามหญ้า
-        try {
-            bgImage = ImageIO.read(new File("assets/background.png"));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        bgImage = loadImage("assets/background.png");
+        gunBaseImage = loadImage("assets/Gunbase.png");
+        gunImage = loadImage("assets/Gun.png");
         loadCustomCursor();
         setFocusable(true);
         addMouseListener(this);
@@ -167,18 +168,18 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
 
         int levelNumber = levelManager.getCurrentLevel().getLevelNumber();
         int typeRoll = random.nextInt(100);
-        int bossChance = Math.min(5 + (levelNumber - 1) * 5, 50);
+        int tankChance = Math.min(5 + (levelNumber - 1) * 5, 50);
         int mediumChance = Math.min(25 + (levelNumber - 1) * 4, 45);
-        Enemy.Type type;
-        if (typeRoll < bossChance) {
-            type = Enemy.Type.BOSS;
-        } else if (typeRoll < bossChance + mediumChance) {
-            type = Enemy.Type.MEDIUM;
+        Enemy enemy;
+        if (typeRoll < tankChance) {
+            enemy = new Enemy.TankEnemy(x, y);
+        } else if (typeRoll < tankChance + mediumChance) {
+            enemy = new Enemy.MediumEnemy(x, y);
         } else {
-            type = Enemy.Type.FAST;
+            enemy = new Enemy.FastEnemy(x, y);
         }
 
-        enemies.add(new Enemy(x, y, type));
+        enemies.add(enemy);
     }
 
     private void updateExplosions(double deltaSeconds) {
@@ -209,6 +210,19 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
         }
     }
 
+    private BufferedImage loadImage(String path) {
+        try {
+            BufferedImage image = ImageIO.read(new File(path));
+            if (image == null) {
+                throw new IOException("Unsupported or invalid image: " + path);
+            }
+            return image;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -230,16 +244,31 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
             g2d.setColor(new Color(100, 70, 40));
         }
 
-        // วาดป้อมปืน (Tower ตรงกลาง)
-        g2d.setColor(Color.GRAY);
-        g2d.fillOval((int) tower.getX() - 20, (int) tower.getY() - 20, 40, 40);
-        g2d.setColor(Color.RED);
-        // วาดลำกล้องปืนตามมุมที่เล็ง
-        double angle = tower.getAimAngle();
-        int barrelX = (int) (tower.getX() + Math.cos(angle) * 25);
-        int barrelY = (int) (tower.getY() + Math.sin(angle) * 25);
-        g2d.setStroke(new BasicStroke(4));
-        g2d.drawLine((int) tower.getX(), (int) tower.getY(), barrelX, barrelY);
+        // Draw the fixed base first, then rotate the gun around the tower center.
+        int towerX = (int) tower.getX();
+        int towerY = (int) tower.getY();
+        if (gunBaseImage != null) {
+            g2d.drawImage(gunBaseImage, towerX - gunBaseImage.getWidth() / 2,
+                    towerY - gunBaseImage.getHeight() / 2, null);
+        } else {
+            g2d.setColor(Color.GRAY);
+            g2d.fillOval(towerX - 20, towerY - 20, 40, 40);
+        }
+
+        if (gunImage != null) {
+            AffineTransform gunTransform = new AffineTransform();
+            gunTransform.translate(tower.getX(), tower.getY());
+            gunTransform.rotate(tower.getAimAngle());
+            gunTransform.translate(-gunImage.getWidth() / 2.0, -gunImage.getHeight() / 2.0);
+            g2d.drawImage(gunImage, gunTransform, null);
+        } else {
+            double angle = tower.getAimAngle();
+            int barrelX = (int) (tower.getX() + Math.cos(angle) * 25);
+            int barrelY = (int) (tower.getY() + Math.sin(angle) * 25);
+            g2d.setColor(Color.RED);
+            g2d.setStroke(new BasicStroke(4));
+            g2d.drawLine(towerX, towerY, barrelX, barrelY);
+        }
 
         // วาดกระสุน
         g2d.setColor(Color.YELLOW);
@@ -250,8 +279,16 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
         // วาดศัตรู
         for (Enemy en : enemies) {
             if (en.isAlive()) {
-                g2d.setColor(en.getColor());
-                g2d.fillOval((int) en.getX() - 10, (int) en.getY() - 10, 20, 20);
+                BufferedImage enemyImage = en.getImage();
+                double dx = tower.getX() - en.getX();
+                double dy = tower.getY() - en.getY();
+                double angle = Math.atan2(dy, dx);
+                AffineTransform enemyTransform = new AffineTransform();
+                enemyTransform.translate(en.getX(), en.getY());
+                enemyTransform.rotate(angle);
+                enemyTransform.translate(-enemyImage.getWidth() / 2.0,
+                        -enemyImage.getHeight() / 2.0);
+                g2d.drawImage(enemyImage, enemyTransform, null);
                 drawEnemyHealthBar(g2d, en);
             }
         }

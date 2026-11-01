@@ -1,70 +1,47 @@
-import java.awt.Color;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import javax.imageio.ImageIO;
 
-public class Enemy {
+public abstract class Enemy {
     private static final double COLLISION_RADIUS = 12.0;
-
-    public enum Type {
-        FAST(90.0, 1, Color.GREEN),
-        MEDIUM(60.0, 2, Color.BLUE),
-        BOSS(35.0, 6, Color.RED);
-
-        private final double speed;
-        private final int maxHealth;
-        private final Color color;
-
-        Type(double speed, int maxHealth, Color color) {
-            this.speed = speed;
-            this.maxHealth = maxHealth;
-            this.color = color;
-        }
-
-        public double getSpeed() {
-            return speed;
-        }
-
-        public int getMaxHealth() {
-            return maxHealth;
-        }
-
-        public Color getColor() {
-            return color;
-        }
-    }
 
     private double x;
     private double y;
     private final double speed;
     private final int maxHealth;
-    private final Type type;
+    private final BufferedImage image;
     private int health;
 
-    public Enemy(double x, double y, Type type) {
-        if (type == null) {
-            throw new IllegalArgumentException("type cannot be null");
+    protected Enemy(double x, double y, double speed, int maxHealth, BufferedImage image) {
+        if (speed < 0.0 || !Double.isFinite(speed)) {
+            throw new IllegalArgumentException("speed must be finite and non-negative");
         }
-
-        this.x = x;
-        this.y = y;
-        this.type = type;
-        this.speed = type.getSpeed();
-        this.maxHealth = type.getMaxHealth();
-        this.health = maxHealth;
-    }
-
-    public Enemy(double x, double y, double speed, int health) {
-        if (speed < 0.0) {
-            throw new IllegalArgumentException("speed cannot be negative");
+        if (maxHealth <= 0) {
+            throw new IllegalArgumentException("maxHealth must be positive");
         }
-        if (health <= 0) {
-            throw new IllegalArgumentException("health must be positive");
+        if (image == null) {
+            throw new IllegalArgumentException("image cannot be null");
         }
 
         this.x = x;
         this.y = y;
         this.speed = speed;
-        this.maxHealth = health;
-        this.health = health;
-        this.type = Type.MEDIUM;
+        this.maxHealth = maxHealth;
+        this.health = maxHealth;
+        this.image = image;
+    }
+
+    protected static BufferedImage loadImage(String path) {
+        try {
+            BufferedImage image = ImageIO.read(new File(path));
+            if (image == null) {
+                throw new IOException("Unsupported or invalid image: " + path);
+            }
+            return image;
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to load enemy image: " + path, e);
+        }
     }
 
     public void moveToward(Tower tower, double deltaSeconds) {
@@ -122,15 +99,32 @@ public class Enemy {
         return maxHealth;
     }
 
-    public Type getType() {
-        return type;
-    }
-
-    public Color getColor() {
-        return type.getColor();
+    public BufferedImage getImage() {
+        return image;
     }
 
     public double getCollisionRadius() {
         return COLLISION_RADIUS;
+    }
+    public static class FastEnemy extends Enemy {
+        private static final BufferedImage IMAGE = loadImage("assets/fast.png");
+
+        public FastEnemy(double x, double y) {
+            super(x, y, 90.0, 1, IMAGE);
+        }
+    }
+    public static class MediumEnemy extends Enemy {
+        private static final BufferedImage IMAGE = loadImage("assets/medium.png");
+
+        public MediumEnemy(double x, double y) {
+            super(x, y, 60.0, 2, IMAGE);
+        }
+    }
+    public static class TankEnemy extends Enemy {
+        private static final BufferedImage IMAGE = loadImage("assets/tank.png");
+
+        public TankEnemy(double x, double y) {
+            super(x, y, 35.0, 6, IMAGE);
+        }
     }
 }
