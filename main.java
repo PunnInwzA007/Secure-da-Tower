@@ -71,6 +71,7 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
                 activateAirstrike();
             }
         });
+        installDeveloperTestKeyBindings();
 
         initGame();
 
@@ -302,6 +303,31 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
         }
     }
 
+    private void installDeveloperTestKeyBindings() {
+        // DEV ONLY: remove this method call and method when screen testing is complete.
+        getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_K, 0), "testGameOver");
+        getActionMap().put("testGameOver", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                gameOver = true;
+                gameWon = false;
+                repaint();
+            }
+        });
+
+        getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_W, 0), "testGameWon");
+        getActionMap().put("testGameWon", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                gameWon = true;
+                gameOver = false;
+                repaint();
+            }
+        });
+    }
+
     private BufferedImage loadImage(String path) {
         try {
             BufferedImage image = ImageIO.read(new File(path));
@@ -413,24 +439,56 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
 
         drawTacticalHud(g2d);
 
-        // หน้าจอ Game Over / Win
-        if (gameOver) {
-            g2d.setColor(new Color(0, 0, 0, 150));
-            g2d.fillRect(0, 0, 800, 600);
-            g2d.setColor(Color.RED);
-            g2d.setFont(new Font("Arial", Font.BOLD, 40));
-            g2d.drawString("GAME OVER", 280, 280);
-            g2d.setFont(new Font("Arial", Font.PLAIN, 20));
-            g2d.drawString("Click to Restart", 340, 330);
+        if (gameOver || gameWon) {
+            drawMissionEndOverlay(g2d, gameWon);
         }
+    }
 
-        if (gameWon) {
-            g2d.setColor(new Color(0, 0, 0, 150));
-            g2d.fillRect(0, 0, 800, 600);
-            g2d.setColor(Color.GREEN);
-            g2d.setFont(new Font("Arial", Font.BOLD, 40));
-            g2d.drawString("ALL LEVELS CLEARED", 190, 280);
-        }
+    private void drawMissionEndOverlay(Graphics2D g2d, boolean victory) {
+        Graphics2D overlay = (Graphics2D) g2d.create();
+        overlay.setColor(new Color(2, 8, 14, 190));
+        overlay.fillRect(0, 0, getWidth(), getHeight());
+
+        int panelWidth = 460;
+        int panelHeight = 250;
+        int panelX = (getWidth() - panelWidth) / 2;
+        int panelY = (getHeight() - panelHeight) / 2;
+        Color accent = victory ? new Color(65, 230, 190) : new Color(245, 70, 85);
+        drawHudPanel(overlay, panelX, panelY, panelWidth, panelHeight, accent);
+
+        overlay.setFont(new Font(Font.MONOSPACED, Font.BOLD, 12));
+        overlay.setColor(new Color(175, 205, 215));
+        String header = victory ? "TACTICAL REPORT  //  OPERATION COMPLETE"
+                : "TACTICAL REPORT  //  SIGNAL LOST";
+        drawCenteredString(overlay, header, panelY + 40);
+
+        overlay.setFont(new Font(Font.MONOSPACED, Font.BOLD, 29));
+        overlay.setColor(accent);
+        String status = victory ? "SECTOR SECURED!" : "MISSION FAILED";
+        drawCenteredString(overlay, status, panelY + 88);
+
+        overlay.setColor(new Color(40, 65, 76));
+        overlay.drawLine(panelX + 30, panelY + 108, panelX + panelWidth - 30, panelY + 108);
+
+        overlay.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
+        overlay.setColor(new Color(190, 215, 222));
+        drawCenteredString(overlay,
+                "SECTOR / LEVEL  " + String.format("%02d", levelManager.getCurrentLevel().getLevelNumber()),
+                panelY + 142);
+        drawCenteredString(overlay,
+                "HOSTILES NEUTRALIZED  " + enemiesDefeated + " / "
+                        + levelManager.getCurrentLevel().getEnemyQuota(),
+                panelY + 166);
+
+        overlay.setFont(new Font(Font.MONOSPACED, Font.BOLD, 14));
+        overlay.setColor(Color.WHITE);
+        drawCenteredString(overlay, "PRESS [R] TO RESTART / REPLAY", panelY + 212);
+        overlay.dispose();
+    }
+
+    private void drawCenteredString(Graphics2D g2d, String text, int baselineY) {
+        int textWidth = g2d.getFontMetrics().stringWidth(text);
+        g2d.drawString(text, (getWidth() - textWidth) / 2, baselineY);
     }
 
     private void drawEnemyHealthBar(Graphics2D g2d, Enemy enemy) {
