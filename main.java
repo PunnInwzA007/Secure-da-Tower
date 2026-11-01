@@ -1,6 +1,10 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import javax.imageio.ImageIO;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -8,6 +12,7 @@ import java.util.Random;
 
 public class main extends JPanel implements ActionListener, MouseListener, MouseMotionListener {
     private Timer timer;
+    private BufferedImage bgImage;
     private LevelManager levelManager;
     private Tower tower;
     private List<Bullet> bullets;
@@ -23,6 +28,11 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
     public main() {
         setPreferredSize(new Dimension(800, 600));
         setBackground(new Color(40, 120, 60)); // สีพื้นหลังสนามหญ้า
+        try {
+            bgImage = ImageIO.read(new File("assets/background.png"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         setFocusable(true);
         addMouseListener(this);
         addMouseMotionListener(this);
@@ -38,7 +48,7 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
 
         initGame();
 
-        // Game loop (ประมาณ 60 FPS -> 16ms ต่อรอบ)
+        // Game loop (ประมาณ 60 FPS -> 16ms บ)
         timer = new Timer(16, this);
         timer.start();
     }
@@ -167,6 +177,12 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
+        if (bgImage != null) {
+            g2d.drawImage(bgImage, 0, 0, 800, 600, null);
+        } else {
+            g2d.setColor(new Color(40, 120, 60));
+            g2d.fillRect(0, 0, 800, 600);
+        }
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         // วาดสิ่งกีดขวาง (Obstacles ในด่านปัจจุบัน)
