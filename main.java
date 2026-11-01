@@ -411,21 +411,7 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
             }
         }
 
-        // Display game status.
-        g2d.setColor(Color.WHITE);
-        g2d.setFont(new Font("Arial", Font.BOLD, 14));
-        g2d.drawString("Level: " + levelManager.getCurrentLevel().getLevelNumber(), 20, 30);
-        g2d.drawString("Tower HP: " + tower.getHealth() + " / " + tower.getMaxHealth(), 20, 55);
-        g2d.drawString("Enemies defeated: " + enemiesDefeated + " / "
-                + levelManager.getCurrentLevel().getEnemyQuota(), 20, 80);
-        g2d.drawString("Enemies alive: " + enemies.size(), 20, 105);
-        g2d.drawString("Move Mouse to Aim, Left Click to Shoot, R to Restart.", 20, 570);
-        g2d.drawString(airstrikeCooldownRemaining <= 0.0 ? "Airstrike (E): READY"
-                : String.format("Airstrike (E): %.1fs", airstrikeCooldownRemaining), 20, 130);
-        if (airstrikePreparationRemaining > 0.0) {
-            g2d.setColor(Color.YELLOW);
-            g2d.drawString("AIRSTRIKE INCOMING!", 330, 40);
-        }
+        drawTacticalHud(g2d);
 
         // หน้าจอ Game Over / Win
         if (gameOver) {
@@ -448,25 +434,130 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
     }
 
     private void drawEnemyHealthBar(Graphics2D g2d, Enemy enemy) {
-        int blockWidth = 6;
-        int blockHeight = 5;
-        int blockGap = 2;
-        int maxHealth = enemy.getMaxHealth();
-        int barWidth = maxHealth * (blockWidth + blockGap) - blockGap;
-        int startX = (int) enemy.getX() - barWidth / 2;
-        int y = (int) enemy.getY() - 18;
-        double healthRatio = (double) enemy.getHealth() / maxHealth;
+        int barWidth = 36;
+        int barHeight = 5;
+        int x = (int) enemy.getX() - barWidth / 2;
+        int y = (int) enemy.getY() - enemy.getImage().getHeight() / 2 - 9;
+        double healthRatio = Math.max(0.0,
+                Math.min(1.0, (double) enemy.getHealth() / enemy.getMaxHealth()));
         Color healthColor = healthRatio > 0.5
-                ? Color.GREEN
-                : healthRatio > 0.25 ? Color.YELLOW : Color.RED;
+                ? blendColors(new Color(255, 190, 55), new Color(65, 225, 140),
+                        (healthRatio - 0.5) * 2.0)
+                : blendColors(new Color(240, 65, 70), new Color(255, 190, 55),
+                        healthRatio * 2.0);
 
-        for (int i = 0; i < maxHealth; i++) {
-            int x = startX + i * (blockWidth + blockGap);
-            g2d.setColor(i < enemy.getHealth() ? healthColor : Color.DARK_GRAY);
-            g2d.fillRect(x, y, blockWidth, blockHeight);
-            g2d.setColor(Color.BLACK);
-            g2d.drawRect(x, y, blockWidth, blockHeight);
+        g2d.setColor(new Color(5, 12, 18, 190));
+        g2d.fillRoundRect(x, y, barWidth, barHeight, 4, 4);
+        if (healthRatio > 0.0) {
+            g2d.setColor(healthColor);
+            g2d.fillRoundRect(x + 1, y + 1,
+                    Math.max(1, (int) ((barWidth - 2) * healthRatio)), barHeight - 2, 3, 3);
         }
+        g2d.setColor(new Color(190, 220, 225, 170));
+        g2d.drawRoundRect(x, y, barWidth, barHeight, 4, 4);
+    }
+
+    private Color blendColors(Color start, Color end, double amount) {
+        double ratio = Math.max(0.0, Math.min(1.0, amount));
+        return new Color(
+                (int) (start.getRed() + (end.getRed() - start.getRed()) * ratio),
+                (int) (start.getGreen() + (end.getGreen() - start.getGreen()) * ratio),
+                (int) (start.getBlue() + (end.getBlue() - start.getBlue()) * ratio));
+    }
+
+    private void drawTacticalHud(Graphics2D g2d) {
+        int x = 16;
+        int y = 16;
+        int barWidth = 220;
+        Color accent = new Color(80, 220, 210);
+
+        // พื้นหลังโปร่งใสแบบบางเฉียบ ไม่บังจอ
+        g2d.setColor(new Color(10, 20, 15, 140));
+        g2d.fillRoundRect(x - 8, y - 8, barWidth + 16, 74, 8, 8);
+        g2d.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 70));
+        g2d.drawRoundRect(x - 8, y - 8, barWidth + 16, 74, 8, 8);
+
+        // ข้อความสถานะย่อแบบมินิมอล
+        g2d.setFont(new Font(Font.MONOSPACED, Font.BOLD, 11));
+        g2d.setColor(accent);
+        g2d.drawString("LVL: " + levelManager.getCurrentLevel().getLevelNumber(), x, y + 10);
+        g2d.setColor(Color.WHITE);
+        g2d.drawString("HP: " + tower.getHealth() + "/" + tower.getMaxHealth(), x + 70, y + 10);
+        g2d.drawString("KILLS: " + enemiesDefeated + "/" + levelManager.getCurrentLevel().getEnemyQuota(), x + 145, y + 10);
+
+        // หลอดเลือดป้อมแบบแบนๆ
+        int healthBarY = y + 18;
+        double towerHealthRatio = (double) tower.getHealth() / tower.getMaxHealth();
+        g2d.setColor(new Color(30, 45, 40));
+        g2d.fillRoundRect(x, healthBarY, barWidth, 4, 2, 2);
+        g2d.setColor(towerHealthRatio > 0.5 ? new Color(65, 220, 160)
+                : towerHealthRatio > 0.25 ? new Color(255, 190, 55)
+                : new Color(245, 75, 75));
+        g2d.fillRoundRect(x, healthBarY, (int) (barWidth * towerHealthRatio), 4, 2, 2);
+
+        // ข้อมูลคีย์ลัดด้านล่างแบบเรียบง่าย
+        g2d.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 10));
+        g2d.setColor(new Color(200, 220, 215, 180));
+        g2d.drawString("[LMB] Shoot   [R] Restart", x, y + 50);
+
+        // วาดหลอด Airstrike แบนๆ ที่มุมขวาล่าง
+        drawAirstrikePanel(g2d, 580, 542, 204, 42, accent);
+
+        if (airstrikePreparationRemaining > 0.0) {
+            g2d.setFont(new Font(Font.MONOSPACED, Font.BOLD, 16));
+            g2d.setColor(new Color(255, 220, 90));
+            String warning = "AIRSTRIKE INBOUND";
+            int warningWidth = g2d.getFontMetrics().stringWidth(warning);
+            g2d.drawString(warning, (800 - warningWidth) / 2, 34);
+        }
+    }
+
+    private void drawAirstrikePanel(Graphics2D g2d, int x, int y, int width, int height, Color accent) {
+        // แผงสกิล E แบบหลอดแบนขนาดเล็ก ชิดมุมขวาล่าง
+        g2d.setColor(new Color(10, 20, 15, 150));
+        g2d.fillRoundRect(x, y, width, height, 8, 8);
+        g2d.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 70));
+        g2d.drawRoundRect(x, y, width, height, 8, 8);
+
+        boolean ready = airstrikeCooldownRemaining <= 0.0;
+        String status = airstrikePreparationRemaining > 0.0 ? "INBOUND"
+                : ready ? "READY [E]" : String.format("RECHARGE %.1fs", airstrikeCooldownRemaining);
+
+        g2d.setFont(new Font(Font.MONOSPACED, Font.BOLD, 10));
+        g2d.setColor(ready ? new Color(100, 245, 175) : new Color(205, 220, 225));
+        g2d.drawString("AIRSTRIKE: " + status, x + 10, y + 16);
+
+        // หลอดคูลดาวน์แบบแบนยาว
+        int barX = x + 10;
+        int barY = y + 24;
+        int barWidth = width - 20;
+        double charge = ready ? 1.0 : 1.0 - airstrikeCooldownRemaining / AIRSTRIKE_COOLDOWN_SECONDS;
+        charge = Math.max(0.0, Math.min(1.0, charge));
+
+        g2d.setColor(new Color(30, 45, 40));
+        g2d.fillRoundRect(barX, barY, barWidth, 6, 3, 3);
+        g2d.setColor(ready ? new Color(65, 225, 165) : new Color(65, 190, 205));
+        if (charge > 0.0) {
+            g2d.fillRoundRect(barX, barY, Math.max(4, (int) (barWidth * charge)), 6, 3, 3);
+        }
+    }
+
+    private void drawHudPanel(Graphics2D g2d, int x, int y, int width, int height,
+            Color accent) {
+        g2d.setColor(new Color(5, 14, 22, 218));
+        g2d.fillRoundRect(x, y, width, height, 12, 12);
+        g2d.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 95));
+        g2d.drawRoundRect(x, y, width, height, 12, 12);
+        g2d.setColor(accent);
+        int corner = 12;
+        g2d.drawLine(x + 1, y + corner, x + 1, y + 1);
+        g2d.drawLine(x + 1, y + 1, x + corner, y + 1);
+        g2d.drawLine(x + width - corner, y + 1, x + width - 1, y + 1);
+        g2d.drawLine(x + width - 1, y + 1, x + width - 1, y + corner);
+        g2d.drawLine(x + 1, y + height - corner, x + 1, y + height - 1);
+        g2d.drawLine(x + 1, y + height - 1, x + corner, y + height - 1);
+        g2d.drawLine(x + width - corner, y + height - 1, x + width - 1, y + height - 1);
+        g2d.drawLine(x + width - 1, y + height - corner, x + width - 1, y + height - 1);
     }
 
     @Override
