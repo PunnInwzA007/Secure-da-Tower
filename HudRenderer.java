@@ -17,6 +17,8 @@ public class HudRenderer {
     public void drawGame(Graphics2D g2d, int screenWidth, int screenHeight,
             GameController controller) {
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_BILINEAR);
         if (backgroundImage != null) {
             g2d.drawImage(backgroundImage, 0, 0, screenWidth, screenHeight, null);
         } else {
@@ -36,20 +38,25 @@ public class HudRenderer {
         Tower tower = controller.getTower();
         int towerX = (int) tower.getX();
         int towerY = (int) tower.getY();
+        int towerSize = Tower.SIZE;
+        int towerDrawX = towerX - towerSize / 2;
+        int towerDrawY = towerY - towerSize / 2;
         if (gunBaseImage != null) {
-            g2d.drawImage(gunBaseImage, towerX - gunBaseImage.getWidth() / 2,
-                    towerY - gunBaseImage.getHeight() / 2, null);
+            g2d.drawImage(gunBaseImage, towerDrawX, towerDrawY, towerSize, towerSize, null);
         } else {
             g2d.setColor(Color.GRAY);
-            g2d.fillOval(towerX - 20, towerY - 20, 40, 40);
+            g2d.fillOval(towerDrawX, towerDrawY, towerSize, towerSize);
         }
 
         if (gunImage != null) {
-            AffineTransform transform = new AffineTransform();
-            transform.translate(tower.getX(), tower.getY());
-            transform.rotate(tower.getAimAngle());
-            transform.translate(-gunImage.getWidth() / 2.0, -gunImage.getHeight() / 2.0);
-            g2d.drawImage(gunImage, transform, null);
+            Graphics2D gunGraphics = (Graphics2D) g2d.create();
+            try {
+                gunGraphics.rotate(tower.getAimAngle(), tower.getX(), tower.getY());
+                gunGraphics.drawImage(gunImage, towerDrawX, towerDrawY,
+                        towerSize, towerSize, null);
+            } finally {
+                gunGraphics.dispose();
+            }
         } else {
             double angle = tower.getAimAngle();
             g2d.setColor(Color.RED);
@@ -69,10 +76,14 @@ public class HudRenderer {
                 continue;
             }
             BufferedImage image = enemy.getImage();
+            int enemyWidth = enemy.getRenderWidth();
+            int enemyHeight = enemy.getRenderHeight();
             double angle = Math.atan2(tower.getY() - enemy.getY(), tower.getX() - enemy.getX());
             AffineTransform transform = new AffineTransform();
             transform.translate(enemy.getX(), enemy.getY());
             transform.rotate(angle);
+            transform.scale((double) enemyWidth / image.getWidth(),
+                    (double) enemyHeight / image.getHeight());
             transform.translate(-image.getWidth() / 2.0, -image.getHeight() / 2.0);
             g2d.drawImage(image, transform, null);
             drawEnemyHealthBar(g2d, enemy);
@@ -133,7 +144,7 @@ public class HudRenderer {
         int barWidth = 36;
         int barHeight = 5;
         int x = (int) enemy.getX() - barWidth / 2;
-        int y = (int) enemy.getY() - enemy.getImage().getHeight() / 2 - 9;
+        int y = (int) enemy.getY() - enemy.getRenderHeight() / 2 - 9;
         double healthRatio = Math.max(0.0,
                 Math.min(1.0, (double) enemy.getHealth() / enemy.getMaxHealth()));
         Color healthColor = healthRatio > 0.5

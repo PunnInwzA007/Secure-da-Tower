@@ -97,7 +97,8 @@ public abstract class Enemy {
                     Math.min(centerY, obstacle.getY() + obstacle.getHeight()));
             double dx = centerX - closestX;
             double dy = centerY - closestY;
-            if (dx * dx + dy * dy < COLLISION_RADIUS * COLLISION_RADIUS) {
+            double collisionRadius = getCollisionRadius();
+            if (dx * dx + dy * dy < collisionRadius * collisionRadius) {
                 return false;
             }
         }
@@ -143,6 +144,15 @@ public abstract class Enemy {
     public double getCollisionRadius() {
         return COLLISION_RADIUS;
     }
+
+    public int getRenderWidth() {
+        return image.getWidth();
+    }
+
+    public int getRenderHeight() {
+        return image.getHeight();
+    }
+
     public static class FastEnemy extends Enemy {
         private static final BufferedImage IMAGE = loadImage("assets/Fast.png");
 
@@ -162,6 +172,21 @@ public abstract class Enemy {
 
         public TankEnemy(double x, double y) {
             super(x, y, 35.0, 6, IMAGE);
+        }
+
+        @Override
+        public double getCollisionRadius() {
+            return 25.0;
+        }
+
+        @Override
+        public int getRenderWidth() {
+            return 50;
+        }
+
+        @Override
+        public int getRenderHeight() {
+            return 50;
         }
     }
 }

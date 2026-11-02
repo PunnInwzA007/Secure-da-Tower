@@ -7,7 +7,6 @@ import java.util.Random;
 public class GameController {
     private static final double MAP_WIDTH = 800.0;
     private static final double MAP_HEIGHT = 600.0;
-    private static final double GAME_OVER_RADIUS = 20.0;
 
     private final AirstrikeSystem airstrikeSystem;
     private LevelManager levelManager;
@@ -113,7 +112,8 @@ public class GameController {
 
                 double dx = enemy.getX() - tower.getX();
                 double dy = enemy.getY() - tower.getY();
-                if (dx * dx + dy * dy < GAME_OVER_RADIUS * GAME_OVER_RADIUS) {
+                double towerCollisionRadius = tower.getCollisionRadius();
+                if (dx * dx + dy * dy < towerCollisionRadius * towerCollisionRadius) {
                     tower.takeDamage(1);
                     enemy.takeDamage(999);
                     if (!tower.isAlive()) {

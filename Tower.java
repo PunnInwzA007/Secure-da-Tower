@@ -1,4 +1,6 @@
 public class Tower {
+    public static final int SIZE = 80;
+    private static final double COLLISION_RADIUS = SIZE / 2.0;
     private static final double DEFAULT_BULLET_SPEED = 400.0;
     private static final int DEFAULT_BULLET_DAMAGE = 1;
 
@@ -28,7 +30,9 @@ public class Tower {
             throw new IllegalStateException("A destroyed tower cannot fire");
         }
 
-        return new Bullet(x, y, aimAngle, DEFAULT_BULLET_SPEED, DEFAULT_BULLET_DAMAGE);
+        double bulletX = x + Math.cos(aimAngle) * COLLISION_RADIUS;
+        double bulletY = y + Math.sin(aimAngle) * COLLISION_RADIUS;
+        return new Bullet(bulletX, bulletY, aimAngle, DEFAULT_BULLET_SPEED, DEFAULT_BULLET_DAMAGE);
     }
 
     public void takeDamage(int damage) {
@@ -61,5 +65,9 @@ public class Tower {
 
     public double getAimAngle() {
         return aimAngle;
+    }
+
+    public double getCollisionRadius() {
+        return COLLISION_RADIUS;
     }
 }
