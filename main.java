@@ -2,6 +2,7 @@ import javax.swing.AbstractAction;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import javax.swing.KeyStroke;
 import javax.swing.Timer;
 import java.awt.Cursor;
@@ -11,6 +12,7 @@ import java.awt.Graphics2D;
 import java.awt.HeadlessException;
 import java.awt.Point;
 import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
@@ -25,9 +27,15 @@ import javax.imageio.ImageIO;
 public class main extends JPanel implements ActionListener, MouseListener, MouseMotionListener {
     private static final double FRAME_DELTA_SECONDS = 0.016;
 
+    private enum GameState {
+        STATE_MENU,
+        STATE_PLAYING
+    }
+
     private final GameController gameController;
     private final HudRenderer hudRenderer;
     private final Timer timer;
+    private GameState gameState = GameState.STATE_MENU;
     private double mouseX = 400.0;
     private double mouseY = 300.0;
 
@@ -51,14 +59,18 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
         bindKey(KeyEvent.VK_R, "restartGame", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                gameController.restart();
+                if (gameState == GameState.STATE_PLAYING) {
+                    gameController.restart();
+                }
                 repaint();
             }
         });
         bindKey(KeyEvent.VK_E, "airstrike", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                gameController.activateAirstrike(mouseX, mouseY);
+                if (gameState == GameState.STATE_PLAYING) {
+                    gameController.activateAirstrike(mouseX, mouseY);
+                }
             }
         });
 
@@ -76,14 +88,18 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
         bindKey(KeyEvent.VK_K, "testGameOver", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                gameController.triggerGameOverForTesting();
+                if (gameState == GameState.STATE_PLAYING) {
+                    gameController.triggerGameOverForTesting();
+                }
                 repaint();
             }
         });
         bindKey(KeyEvent.VK_W, "testGameWon", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                gameController.triggerVictoryForTesting();
+                if (gameState == GameState.STATE_PLAYING) {
+                    gameController.triggerVictoryForTesting();
+                }
                 repaint();
             }
         });
@@ -108,7 +124,9 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        gameController.update(FRAME_DELTA_SECONDS);
+        if (gameState == GameState.STATE_PLAYING) {
+            gameController.update(FRAME_DELTA_SECONDS);
+        }
         repaint();
     }
 
@@ -117,7 +135,11 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g.create();
         try {
-            hudRenderer.drawGame(g2d, getWidth(), getHeight(), gameController);
+            if (gameState == GameState.STATE_MENU) {
+                hudRenderer.drawMainMenu(g2d, getWidth(), getHeight(), mouseX, mouseY);
+            } else {
+                hudRenderer.drawGame(g2d, getWidth(), getHeight(), gameController);
+            }
         } finally {
             g2d.dispose();
         }
@@ -125,10 +147,32 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
 
     @Override
     public void mousePressed(MouseEvent e) {
+        if (e.getButton() != MouseEvent.BUTTON1) {
+            return;
+        }
+
+        if (gameState == GameState.STATE_MENU) {
+            if (HudRenderer.getStartButtonBounds(getWidth(), getHeight()).contains(e.getPoint())) {
+                gameController.restart();
+                gameState = GameState.STATE_PLAYING;
+                gameController.aimAt(mouseX, mouseY);
+                requestFocusInWindow();
+                repaint();
+            } else if (HudRenderer.getExitButtonBounds(getWidth(), getHeight())
+                    .contains(e.getPoint())) {
+                Window window = SwingUtilities.getWindowAncestor(this);
+                if (window != null) {
+                    window.dispose();
+                }
+                System.exit(0);
+            }
+            return;
+        }
+
         if (gameController.isGameOver()) {
             gameController.restart();
             repaint();
-        } else if (!gameController.isGameWon() && e.getButton() == MouseEvent.BUTTON1) {
+        } else if (!gameController.isGameWon()) {
             gameController.fire();
         }
     }
@@ -137,7 +181,11 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
     public void mouseMoved(MouseEvent e) {
         mouseX = e.getX();
         mouseY = e.getY();
-        gameController.aimAt(mouseX, mouseY);
+        if (gameState == GameState.STATE_PLAYING) {
+            gameController.aimAt(mouseX, mouseY);
+        } else {
+            repaint();
+        }
     }
 
     @Override
@@ -148,7 +196,14 @@ public class main extends JPanel implements ActionListener, MouseListener, Mouse
     @Override public void mouseClicked(MouseEvent e) {}
     @Override public void mouseReleased(MouseEvent e) {}
     @Override public void mouseEntered(MouseEvent e) {}
-    @Override public void mouseExited(MouseEvent e) {}
+    @Override
+    public void mouseExited(MouseEvent e) {
+        if (gameState == GameState.STATE_MENU) {
+            mouseX = -1.0;
+            mouseY = -1.0;
+            repaint();
+        }
+    }
 
     public static void main(String[] args) {
         JFrame frame = new JFrame("Secure da Tower");

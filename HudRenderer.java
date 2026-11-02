@@ -2,6 +2,7 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.BasicStroke;
+import java.awt.Rectangle;
 import java.awt.geom.AffineTransform;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -13,6 +14,90 @@ public class HudRenderer {
     private final BufferedImage backgroundImage = loadImage("assets/Background.png");
     private final BufferedImage gunBaseImage = loadImage("assets/Gunbase.png");
     private final BufferedImage gunImage = loadImage("assets/Gun.png");
+
+    private static final int MENU_BUTTON_WIDTH = 260;
+    private static final int MENU_BUTTON_HEIGHT = 56;
+    private static final int MENU_BUTTON_GAP = 16;
+
+    public void drawMainMenu(Graphics2D g2d, int screenWidth, int screenHeight,
+            double mouseX, double mouseY) {
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        if (backgroundImage != null) {
+            g2d.drawImage(backgroundImage, 0, 0, screenWidth, screenHeight, null);
+        } else {
+            g2d.setColor(new Color(18, 35, 32));
+            g2d.fillRect(0, 0, screenWidth, screenHeight);
+        }
+
+        g2d.setColor(new Color(2, 10, 16, 185));
+        g2d.fillRect(0, 0, screenWidth, screenHeight);
+
+        // เพิ่มความสูง panel ให้พอดีกับการจัดวางใหม่
+        int panelWidth = Math.min(440, Math.max(300, screenWidth - 32));
+        int panelHeight = 410; // ขยายจาก 370 เป็น 410 เพื่อเพิ่มพื้นที่
+        int panelX = (screenWidth - panelWidth) / 2;
+        int panelY = (screenHeight - panelHeight) / 2;
+        drawHudPanel(g2d, panelX, panelY, panelWidth, panelHeight, new Color(80, 220, 210));
+
+        // จัดลำดับความสูงข้อความใหม่ให้อยู่ด้านบน
+        g2d.setFont(new Font(Font.MONOSPACED, Font.BOLD, 12));
+        g2d.setColor(new Color(170, 205, 215));
+        drawCenteredString(g2d, "TACTICAL DEFENSE SYSTEM", screenWidth, panelY + 45);
+
+        g2d.setFont(new Font(Font.MONOSPACED, Font.BOLD, 32));
+        g2d.setColor(new Color(100, 240, 220));
+        drawCenteredString(g2d, "SECURE DA TOWER", screenWidth, panelY + 90);
+
+        g2d.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        g2d.setColor(new Color(185, 210, 218));
+        drawCenteredString(g2d, "DEFEND THE SECTOR. HOLD THE LINE.", screenWidth, panelY + 120);
+
+        drawMenuButton(g2d, getStartButtonBounds(screenWidth, screenHeight),
+                "START GAME", new Color(70, 220, 190),
+                getStartButtonBounds(screenWidth, screenHeight).contains(mouseX, mouseY));
+        drawMenuButton(g2d, getExitButtonBounds(screenWidth, screenHeight),
+                "EXIT", new Color(225, 100, 100),
+                getExitButtonBounds(screenWidth, screenHeight).contains(mouseX, mouseY));
+
+        g2d.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 10));
+        g2d.setColor(new Color(145, 175, 185));
+        drawCenteredString(g2d, "LMB: FIRE     E: AIRSTRIKE",
+                screenWidth, panelY + panelHeight - 22);
+    }
+
+    private void drawMenuButton(Graphics2D g2d, Rectangle bounds, String label,
+            Color accent, boolean hovered) {
+        Color fill = hovered
+                ? new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 65)
+                : new Color(8, 20, 27, 220);
+        g2d.setColor(fill);
+        g2d.fillRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, 8, 8);
+
+        g2d.setColor(hovered ? accent : new Color(
+                accent.getRed(), accent.getGreen(), accent.getBlue(), 150));
+        g2d.setStroke(new BasicStroke(hovered ? 2.0f : 1.0f));
+        g2d.drawRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, 8, 8);
+
+        g2d.setFont(new Font(Font.MONOSPACED, Font.BOLD, 16));
+        g2d.setColor(hovered ? Color.WHITE : accent);
+        int textWidth = g2d.getFontMetrics().stringWidth(label);
+        int textX = bounds.x + (bounds.width - textWidth) / 2;
+        int textY = bounds.y + (bounds.height + g2d.getFontMetrics().getAscent()
+                - g2d.getFontMetrics().getDescent()) / 2;
+        g2d.drawString(label, textX, textY);
+    }
+
+    public static Rectangle getStartButtonBounds(int screenWidth, int screenHeight) {
+        int x = (screenWidth - MENU_BUTTON_WIDTH) / 2;
+        int y = (screenHeight - (MENU_BUTTON_HEIGHT * 2 + MENU_BUTTON_GAP)) / 2;
+        return new Rectangle(x, y, MENU_BUTTON_WIDTH, MENU_BUTTON_HEIGHT);
+    }
+
+    public static Rectangle getExitButtonBounds(int screenWidth, int screenHeight) {
+        Rectangle startBounds = getStartButtonBounds(screenWidth, screenHeight);
+        return new Rectangle(startBounds.x, startBounds.y + MENU_BUTTON_HEIGHT + MENU_BUTTON_GAP,
+                MENU_BUTTON_WIDTH, MENU_BUTTON_HEIGHT);
+    }
 
     public void drawGame(Graphics2D g2d, int screenWidth, int screenHeight,
             GameController controller) {
