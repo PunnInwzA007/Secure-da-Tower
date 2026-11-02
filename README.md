@@ -111,6 +111,11 @@
 
 ---
 
+## 📄 เอกสารประกอบ
+
+ [เอกสารโครงงาน](https://docs.google.com/document/d/1htmpm-MPtBR8PUGCcescMUqazsTM6DA-gko9WK0_UzM/edit?usp=sharing)
+
+---
 ## 👨‍💻 ผู้จัดทำ (Developer)
 
 * **นายปัญญวัฒน์ ฟักทิม** (6704062612162)  
