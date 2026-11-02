@@ -111,13 +111,11 @@ public class HudRenderer {
             g2d.fillRect(0, 0, screenWidth, screenHeight);
         }
 
-        for (Obstacle obstacle : controller.getLevelManager().getCurrentLevel().getObstacles()) {
-            g2d.setColor(new Color(100, 70, 40));
-            g2d.fillRect((int) obstacle.getX(), (int) obstacle.getY(),
-                    (int) obstacle.getWidth(), (int) obstacle.getHeight());
-            g2d.setColor(Color.DARK_GRAY);
-            g2d.drawRect((int) obstacle.getX(), (int) obstacle.getY(),
-                    (int) obstacle.getWidth(), (int) obstacle.getHeight());
+        LevelManager levelManager = controller.getLevelManager();
+        for (Obstacle obstacle : levelManager.getCurrentLevel().getObstacles()) {
+            g2d.drawImage(levelManager.getObstacleImage(obstacle.getRockVariant()),
+                    (int) obstacle.getX(), (int) obstacle.getY(),
+                    Obstacle.GRID_SIZE, Obstacle.GRID_SIZE, null);
         }
 
         Tower tower = controller.getTower();

@@ -1,94 +1,38 @@
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
+import javax.imageio.ImageIO;
 
 public class LevelManager {
     private static final int MAP_WIDTH = 800;
     private static final int MAP_HEIGHT = 600;
     private static final int BASE_ENEMY_QUOTA = 10;
     private static final int ENEMY_QUOTA_INCREASE = 5;
+    private static final int BASE_OBSTACLE_COUNT = 4;
+    private static final int OBSTACLE_COUNT_INCREASE = 1;
+    private static final int GRID_COLUMNS = MAP_WIDTH / Obstacle.GRID_SIZE;
+    private static final int GRID_ROWS = MAP_HEIGHT / Obstacle.GRID_SIZE;
 
     private final List<Level> levels;
+    private final BufferedImage[] rockImages;
+    private final Random random;
     private int currentLevelIndex;
 
     public LevelManager() {
+        rockImages = new BufferedImage[] {
+                loadImage("assets/OBS1.png"),
+                loadImage("assets/OBS2.png"),
+                loadImage("assets/OBS3.png")
+        };
+        random = new Random();
         levels = new ArrayList<>();
-        levels.add(createLevel(1,
-                new StaticObstacle(120.0, 100.0, 120.0, 30.0),
-                new StaticObstacle(560.0, 110.0, 100.0, 40.0),
-                new StaticObstacle(170.0, 430.0, 80.0, 100.0),
-                new StaticObstacle(500.0, 410.0, 140.0, 30.0)));
-        levels.add(createLevel(2,
-                new StaticObstacle(90.0, 230.0, 170.0, 30.0),
-                new StaticObstacle(540.0, 320.0, 170.0, 30.0),
-                new StaticObstacle(360.0, 80.0, 40.0, 120.0),
-                new StaticObstacle(390.0, 420.0, 40.0, 120.0),
-                new StaticObstacle(280.0, 500.0, 70.0, 35.0)));
-        levels.add(createLevel(3,
-                new StaticObstacle(80.0, 130.0, 180.0, 35.0),
-                new StaticObstacle(540.0, 100.0, 35.0, 160.0),
-                new StaticObstacle(90.0, 430.0, 35.0, 100.0),
-                new StaticObstacle(500.0, 430.0, 190.0, 35.0),
-                new StaticObstacle(300.0, 80.0, 35.0, 90.0)));
-        levels.add(createLevel(4,
-                new StaticObstacle(100.0, 180.0, 110.0, 35.0),
-                new StaticObstacle(590.0, 180.0, 110.0, 35.0),
-                new StaticObstacle(100.0, 385.0, 110.0, 35.0),
-                new StaticObstacle(590.0, 385.0, 110.0, 35.0),
-                new StaticObstacle(350.0, 70.0, 100.0, 30.0),
-                new StaticObstacle(350.0, 500.0, 100.0, 30.0)));
-        levels.add(createLevel(5,
-                new StaticObstacle(70.0, 100.0, 35.0, 180.0),
-                new StaticObstacle(200.0, 70.0, 35.0, 130.0),
-                new StaticObstacle(695.0, 320.0, 35.0, 180.0),
-                new StaticObstacle(565.0, 400.0, 35.0, 130.0),
-                new StaticObstacle(290.0, 100.0, 80.0, 30.0),
-                new StaticObstacle(430.0, 470.0, 80.0, 30.0)));
-        levels.add(createLevel(6,
-                new StaticObstacle(100.0, 90.0, 140.0, 30.0),
-                new StaticObstacle(560.0, 90.0, 140.0, 30.0),
-                new StaticObstacle(100.0, 480.0, 140.0, 30.0),
-                new StaticObstacle(560.0, 480.0, 140.0, 30.0),
-                new StaticObstacle(120.0, 260.0, 35.0, 100.0),
-                new StaticObstacle(645.0, 260.0, 35.0, 100.0),
-                new StaticObstacle(350.0, 120.0, 100.0, 30.0)));
-        levels.add(createLevel(7,
-                new StaticObstacle(80.0, 160.0, 220.0, 30.0),
-                new StaticObstacle(500.0, 160.0, 220.0, 30.0),
-                new StaticObstacle(80.0, 410.0, 220.0, 30.0),
-                new StaticObstacle(500.0, 410.0, 220.0, 30.0),
-                new StaticObstacle(330.0, 70.0, 30.0, 100.0),
-                new StaticObstacle(440.0, 430.0, 30.0, 100.0),
-                new StaticObstacle(370.0, 250.0, 60.0, 30.0)));
-        levels.add(createLevel(8,
-                new StaticObstacle(90.0, 80.0, 35.0, 180.0),
-                new StaticObstacle(675.0, 340.0, 35.0, 180.0),
-                new StaticObstacle(200.0, 100.0, 130.0, 30.0),
-                new StaticObstacle(470.0, 470.0, 130.0, 30.0),
-                new StaticObstacle(180.0, 440.0, 35.0, 80.0),
-                new StaticObstacle(585.0, 80.0, 35.0, 80.0),
-                new StaticObstacle(330.0, 100.0, 35.0, 100.0),
-                new StaticObstacle(435.0, 400.0, 35.0, 100.0)));
-        levels.add(createLevel(9,
-                new StaticObstacle(70.0, 120.0, 180.0, 30.0),
-                new StaticObstacle(550.0, 120.0, 180.0, 30.0),
-                new StaticObstacle(70.0, 450.0, 180.0, 30.0),
-                new StaticObstacle(550.0, 450.0, 180.0, 30.0),
-                new StaticObstacle(280.0, 70.0, 30.0, 120.0),
-                new StaticObstacle(490.0, 410.0, 30.0, 120.0),
-                new StaticObstacle(330.0, 220.0, 140.0, 25.0),
-                new StaticObstacle(330.0, 355.0, 140.0, 25.0)));
-        levels.add(createLevel(10,
-                new StaticObstacle(80.0, 90.0, 35.0, 160.0),
-                new StaticObstacle(685.0, 350.0, 35.0, 160.0),
-                new StaticObstacle(150.0, 80.0, 140.0, 30.0),
-                new StaticObstacle(510.0, 490.0, 140.0, 30.0),
-                new StaticObstacle(130.0, 400.0, 35.0, 120.0),
-                new StaticObstacle(635.0, 80.0, 35.0, 120.0),
-                new StaticObstacle(270.0, 150.0, 30.0, 80.0),
-                new StaticObstacle(500.0, 370.0, 30.0, 80.0),
-                new StaticObstacle(360.0, 80.0, 80.0, 25.0),
-                new StaticObstacle(360.0, 495.0, 80.0, 25.0)));
+        for (int levelNumber = 1; levelNumber <= 10; levelNumber++) {
+            levels.add(createLevel(levelNumber));
+        }
     }
 
     public Level getCurrentLevel() {
@@ -116,11 +60,61 @@ public class LevelManager {
         return levels.size();
     }
 
-    private Level createLevel(int levelNumber, Obstacle... obstacles) {
+    public BufferedImage getObstacleImage(Obstacle.RockVariant variant) {
+        if (variant == null) {
+            throw new IllegalArgumentException("variant cannot be null");
+        }
+        return rockImages[variant.ordinal()];
+    }
+
+    private Level createLevel(int levelNumber) {
+        List<Integer> availableCells = new ArrayList<>();
+        for (int row = 0; row < GRID_ROWS; row++) {
+            for (int column = 0; column < GRID_COLUMNS; column++) {
+                int x = column * Obstacle.GRID_SIZE;
+                int y = row * Obstacle.GRID_SIZE;
+                if (!overlapsTower(x, y)) {
+                    availableCells.add(row * GRID_COLUMNS + column);
+                }
+            }
+        }
+
+        Collections.shuffle(availableCells, random);
+        int obstacleCount = BASE_OBSTACLE_COUNT
+                + (levelNumber - 1) * OBSTACLE_COUNT_INCREASE;
         List<Obstacle> obstacleList = new ArrayList<>();
-        Collections.addAll(obstacleList, obstacles);
+        for (int i = 0; i < obstacleCount; i++) {
+            int cell = availableCells.get(i);
+            int x = cell % GRID_COLUMNS * Obstacle.GRID_SIZE;
+            int y = cell / GRID_COLUMNS * Obstacle.GRID_SIZE;
+            Obstacle.RockVariant variant = Obstacle.RockVariant.values()[
+                    random.nextInt(Obstacle.RockVariant.values().length)];
+            obstacleList.add(new StaticObstacle(x, y, variant));
+        }
+
         int enemyQuota = BASE_ENEMY_QUOTA + (levelNumber - 1) * ENEMY_QUOTA_INCREASE;
         return new Level(levelNumber, MAP_WIDTH, MAP_HEIGHT, enemyQuota, obstacleList);
+    }
+
+    private boolean overlapsTower(int x, int y) {
+        int towerLeft = (MAP_WIDTH - Tower.SIZE) / 2;
+        int towerTop = (MAP_HEIGHT - Tower.SIZE) / 2;
+        return x < towerLeft + Tower.SIZE
+                && x + Obstacle.GRID_SIZE > towerLeft
+                && y < towerTop + Tower.SIZE
+                && y + Obstacle.GRID_SIZE > towerTop;
+    }
+
+    private BufferedImage loadImage(String path) {
+        try {
+            BufferedImage image = ImageIO.read(new File(path));
+            if (image == null) {
+                throw new IOException("Unsupported or invalid image: " + path);
+            }
+            return image;
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to load obstacle image: " + path, e);
+        }
     }
 
     public static final class Level {
